@@ -36,8 +36,8 @@ async function init() {
 
   // ── Full page (Pro)
   document.getElementById('btnFullPage').addEventListener('click', () => {
-    // Show upgrade prompt — stub for v1
-    document.getElementById('btnFullPage').style.opacity = '0.5';
+    // Redirect to landing page pricing section
+    chrome.tabs.create({ url: 'https://snapmark.brilworks.com/#pricing' });
   });
 
   // ── Keyboard shortcuts
