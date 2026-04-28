@@ -59,8 +59,14 @@ async function init() {
     document.getElementById('btnShowPromo').style.display = 'none';
   });
 
+  const promoInput = document.getElementById('promoCode');
+  promoInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('btnRedeem').click();
+    e.stopPropagation(); // Prevent shortcuts from firing
+  });
+
   document.getElementById('btnRedeem').addEventListener('click', async () => {
-    const code = document.getElementById('promoCode').value.trim();
+    const code = promoInput.value.trim();
     if (code === 'Brilworks') {
       await chrome.storage.local.set({ pro_unlocked: true });
       document.getElementById('promoInputGroup').style.display = 'none';
@@ -72,6 +78,7 @@ async function init() {
 
   // ── Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (e.key.toLowerCase() === 'r') document.getElementById('btnRegion').click();
     if (e.key.toLowerCase() === 'v') document.getElementById('btnVisible').click();
   });
