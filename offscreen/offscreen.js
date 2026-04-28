@@ -1,11 +1,12 @@
 // offscreen/offscreen.js
 
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
-  if (message.type === 'stitch-images-from-storage') {
-    const { count, totalWidth, totalHeight } = message.data;
-    console.log(`Offscreen: Stitching ${count} segments from storage into ${totalWidth}x${totalHeight}`);
+  if (message.type === 'stitch-images') {
+    const { images, totalWidth, totalHeight } = message.data;
+    console.log(`Offscreen: Stitching ${images.length} images into ${totalWidth}x${totalHeight}`);
     
     try {
+      // Safe cap for browser canvas limits
       const MAX_CANVAS_HEIGHT = 16000; 
       const finalHeight = Math.min(totalHeight, MAX_CANVAS_HEIGHT);
       
@@ -14,31 +15,28 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       canvas.height = finalHeight;
       const ctx = canvas.getContext('2d');
 
-      // White background fallback
+      if (!ctx) throw new Error('Canvas context not available');
+
+      // Default white background
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, totalWidth, finalHeight);
 
-      for (let i = 0; i < count; i++) {
-        const key = `sm_seg_${i}`;
-        const result = await chrome.storage.local.get(key);
-        const segment = result[key];
-
-        if (!segment) {
-          console.warn(`Offscreen: Missing segment ${i}`);
-          continue;
-        }
-
+      for (const segment of images) {
         if (segment.y >= finalHeight) continue;
 
-        const img = await loadImage(segment.dataUrl);
-        ctx.drawImage(img, 0, 0, img.width, img.height, 0, segment.y, img.width, img.height);
+        try {
+          const img = await loadImage(segment.dataUrl);
+          ctx.drawImage(img, 0, 0, img.width, img.height, 0, segment.y, img.width, img.height);
+        } catch (e) {
+          console.warn('Offscreen: Failed to draw segment', e);
+        }
       }
 
-      console.log('Offscreen: Exporting final image...');
+      console.log('Offscreen: Generating final JPEG...');
       const finalDataUrl = canvas.toDataURL('image/jpeg', 0.8);
       
       if (!finalDataUrl || finalDataUrl.length < 1000) {
-        throw new Error('Canvas export produced invalid result');
+        throw new Error('Final image export failed');
       }
 
       sendResponse({ success: true, dataUrl: finalDataUrl });
@@ -54,7 +52,7 @@ function loadImage(url) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('Image load failed'));
+    img.onerror = () => reject(new Error('Image decode failed'));
     img.src = url;
   });
 }

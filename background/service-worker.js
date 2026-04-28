@@ -14,14 +14,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ error: err.message });
     });
     return true; 
-  } else if (message.type === 'FINISH_FULL_PAGE_CAPTURE') {
-    finishFullPageCapture(sender.tab, message.data);
   } else if (message.type === 'PUSH_SEGMENT') {
     const key = `sm_seg_${message.index}`;
     chrome.storage.local.set({ [key]: message.segment }, () => {
       sendResponse({ success: true });
     });
     return true;
+  } else if (message.type === 'FINISH_FULL_PAGE_CAPTURE') {
+    finishFullPageCapture(sender.tab, message.data);
   } else if (message.type === 'REGION_SELECTED') {
     handleRegionSelected(sender.tab, message.rect, message.devicePixelRatio);
   }
@@ -30,8 +30,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function handleCapturePart(windowId) {
   return new Promise((resolve, reject) => {
-    // Quality 0.8 to save memory
-    chrome.tabs.captureVisibleTab(windowId, { format: 'jpeg', quality: 80 }, (dataUrl) => {
+    chrome.tabs.captureVisibleTab(windowId, { format: 'jpeg', quality: 75 }, (dataUrl) => {
       if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
       else resolve(dataUrl);
     });
@@ -40,11 +39,9 @@ async function handleCapturePart(windowId) {
 
 async function handleFullPageCapture(tabId) {
   try {
-    // Clear old segments before starting
     const all = await chrome.storage.local.get(null);
     const keys = Object.keys(all).filter(k => k.startsWith('sm_seg_'));
     await chrome.storage.local.remove(keys);
-    
     await chrome.scripting.executeScript({ target: { tabId }, files: ['content/fullpage.js'] });
   } catch (e) { console.error('FullPage script failed', e); }
 }
@@ -52,13 +49,17 @@ async function handleFullPageCapture(tabId) {
 async function finishFullPageCapture(tab, data) {
   try {
     const { width, height, count } = data;
-    console.log(`Background: Stitching ${count} segments from storage...`);
+    console.log(`Background: Collecting ${count} segments for stitching...`);
     
-    const stitchedDataUrl = await stitchImages(count, width, height);
+    // Read ALL segments from storage into memory here in background
+    const keys = Array.from({ length: count }, (_, i) => `sm_seg_${i}`);
+    const results = await chrome.storage.local.get(keys);
+    const images = keys.map(k => results[k]).filter(x => !!x);
+    
+    const stitchedDataUrl = await stitchImages(images, width, height);
     await openEditor(tab, stitchedDataUrl);
     
-    // Cleanup segments
-    const keys = Array.from({ length: count }, (_, i) => `sm_seg_${i}`);
+    // Cleanup
     await chrome.storage.local.remove(keys);
   } catch (e) {
     console.error('Stitching failed', e);
@@ -66,7 +67,7 @@ async function finishFullPageCapture(tab, data) {
   }
 }
 
-async function stitchImages(count, totalWidth, totalHeight) {
+async function stitchImages(images, totalWidth, totalHeight) {
   const contexts = await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
   if (contexts.length === 0) {
     await chrome.offscreen.createDocument({
@@ -76,15 +77,26 @@ async function stitchImages(count, totalWidth, totalHeight) {
     });
   }
   
+  // Send the FULL images array in the message. 
+  // Background context ALWAYS has the data.
   const response = await chrome.runtime.sendMessage({
-    type: 'stitch-images-from-storage',
+    type: 'stitch-images',
     target: 'offscreen',
-    data: { count, totalWidth, totalHeight }
+    data: { images, totalWidth, totalHeight }
   });
   
   await chrome.offscreen.closeDocument();
   if (!response?.success) throw new Error(response?.error || 'Stitch failed');
   return response.dataUrl;
+}
+
+async function openEditor(tab, dataUrl) {
+  await chrome.storage.local.set({
+    'snapmark_pending_image': dataUrl,
+    'snapmark_source_url': tab.url,
+    'snapmark_timestamp': Date.now()
+  });
+  await chrome.tabs.create({ url: chrome.runtime.getURL('editor/editor.html') });
 }
 
 async function handleRegionCapture(tabId) {
@@ -102,15 +114,6 @@ async function handleVisibleCapture(tabId) {
   const tab = await chrome.tabs.get(tabId);
   const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'jpeg', quality: 90 });
   await openEditor(tab, dataUrl);
-}
-
-async function openEditor(tab, dataUrl) {
-  await chrome.storage.local.set({
-    'snapmark_pending_image': dataUrl,
-    'snapmark_source_url': tab.url,
-    'snapmark_timestamp': Date.now()
-  });
-  await chrome.tabs.create({ url: chrome.runtime.getURL('editor/editor.html') });
 }
 
 async function cropImage(dataUrl, rect, dpr) {
