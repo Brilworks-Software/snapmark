@@ -1,6 +1,6 @@
 {
   "name": "snapmark",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "SnapMark Chrome Extension & Landing Page",
   "main": "index.html",
   "dependencies": {

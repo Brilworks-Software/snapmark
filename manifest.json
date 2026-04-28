@@ -2,9 +2,9 @@
   "manifest_version": 3,
   "name": "SnapMark: Screenshot, Annotate & Share Instantly",
   "short_name": "SnapMark",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "default_locale": "en",
-  "description": "Capture any area of your screen, annotate with arrows, shapes, text & blur, then copy or download — instantly. No login. No uploads. By Brilworks.",
+  "description": "Capture any area, full-page scrolling screenshots, and annotate with arrows, shapes, text & blur — instantly.",
   "permissions": [
     "activeTab",
     "scripting",
