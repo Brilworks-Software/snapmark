@@ -1,55 +1,60 @@
-# SnapMark: Chrome Web Store Listing Details
+# SnapMark: Chrome Web Store Submission Details
 
-Use the following details to list **SnapMark** on the Chrome Web Store.
+Use these exact justifications to ensure fast approval and avoid rejection.
 
 ---
 
 ## 📝 General Information
 
 **Title:** 
-SnapMark: Screenshot, Annotate & Share Instantly
+SnapMark: Pro Screenshot & Annotation Tool
 
 **Summary (Max 150 characters):**
-Capture any area of your screen, annotate with arrows, shapes, text & blur, then share instantly via link. No login required.
+Fastest free screenshot tool. Capture any area, annotate with arrows, shapes, text & blur, then share instantly via link. No login required.
 
-**Detailed Description:**
-SnapMark is the fastest way to capture your screen and provide visual feedback. Whether you're a developer reporting a bug, a designer sharing a critique, or a student highlighting research, SnapMark makes it effortless.
-
-**Key Features:**
-- 🎯 **Precision Capture**: Select any region or capture the full visible area.
-- 🎨 **Pro Annotation Tools**: High-quality arrows, rectangles, circles, and free-hand pen.
-- 💬 **Typography**: Add bold text notes to provide context.
-- 🔒 **Privacy Blur**: Redact sensitive info (PII, passwords) before sharing.
-- 🚀 **Instant Sharing**: Upload directly to your Supabase storage and copy a public link in one click.
-- 📋 **Clipboard Ready**: Instantly copy merged images to your clipboard for pasting.
-- 📜 **Recent History**: Keep your last 10 captures accessible locally.
+**Single Purpose Description:**
+SnapMark is a dedicated productivity extension for capturing, annotating, and sharing screenshots directly from the browser. It provides a non-destructive markup layer to facilitate visual feedback and communication.
 
 ---
 
-## 🖼️ Visual Assets
+## 🔒 Privacy & Permissions Justification
 
-| Asset Type | Requirement | Status |
-| :--- | :--- | :--- |
-| **Icon** | 128x128 PNG | ✅ Found in `icons/icon128.png` |
-| **Screenshot 1** | 1280x800 or 640x400 | ✅ Use `website/assets/hero.png` |
-| **Promo Tile** | 440x280 | ⚠️ Needs resize from `hero.png` |
+| Permission | Justification for Chrome Reviewers |
+| :--- | :--- |
+| **`storage`** | Used to store user preferences (stroke color/size) and a local history of the last 10 captures for quick re-editing. Data is stored entirely on the user's device. |
+| **`activeTab`** | Required to capture the visual contents of the currently active tab when the user clicks the "Capture" button. Permission is transient and only granted upon user action. |
+| **`scripting`** | Necessary to inject a lightweight UI overlay for region selection into the current web page, allowing users to drag and select a capture area. |
+| **`tabs`** | Used to open the annotation editor in a new tab immediately after a capture is taken, providing a full-screen workspace for markup. |
+| **Host Permissions** | Required to capture screenshots and provide the selection overlay across all websites where the user initiates a capture. |
+
+**Are you using remote code?**
+> **No.** All logic and libraries (including Supabase JS) are bundled locally within the extension package to comply with Manifest V3 security policies.
 
 ---
 
-## 🛡️ Privacy Policy
+## 📊 Data Usage Disclosures
 
-Since SnapMark allows users to upload images to a third-party service (Supabase), a privacy policy is required.
+**What user data do you collect?**
+- **Website Content**: The extension captures visual screenshots of the pages you visit. This is stored locally and only uploaded if you explicitly use the "Share" feature.
+- **User Activity**: Mouse positions and clicks are tracked *only* during the active region selection process to determine the capture coordinates.
 
-**Privacy Policy URL:** `https://your-vercel-domain.com/privacy`
+**Certifications:**
+- ✅ I do not sell or transfer user data to third parties.
+- ✅ I do not use or transfer user data for purposes unrelated to the item's single purpose.
+- ✅ I do not use or transfer user data to determine creditworthiness or for lending purposes.
 
-**Draft Text:**
-> SnapMark does not collect any personal information. All screenshots captured are stored locally on your device. When you choose to use the "Share" feature, the image is uploaded to a Supabase project configured by the user. SnapMark does not have access to your Supabase credentials or the uploaded data.
+---
+
+## 🖼️ Store Assets
+
+- **Privacy Policy URL**: `https://snapmark.brilworks.com/privacy.html`
+- **Icon**: `icons/icon128.png`
+- **Screenshots**: Use `assets/hero.png` (High-res).
 
 ---
 
 ## ⚙️ Submission Checklist
 
-1. **ZIP the project**: Select all files *except* `.git`, `website`, and `editor/supabase-config.js`.
-2. **Upload to Developer Dashboard**: Go to [Chrome Web Store Dev Console](https://chrome.google.com/webstore/devconsole).
-3. **Set Permissions**: In the dashboard, justify the use of `activeTab`, `scripting`, and `storage` (already handled in `manifest.json`).
-4. **Publish**: Select "Public" or "Unlisted".
+1. **Localize Libraries**: ✅ Already done (Supabase JS is now local).
+2. **ZIP the project**: Select `background`, `content`, `editor`, `icons`, `popup`, `_locales`, and `manifest.json`. **Exclude** `.git`, `assets`, `index.html`, etc.
+3. **Upload**: Go to [Developer Console](https://chrome.google.com/webstore/devconsole).
