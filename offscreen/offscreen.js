@@ -29,7 +29,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       }
 
       console.log('Offscreen: Exporting DataURL...');
-      const finalDataUrl = canvas.toDataURL('image/png');
+      const finalDataUrl = canvas.toDataURL('image/jpeg', 0.9);
       
       if (!finalDataUrl || finalDataUrl === 'data:,') {
         throw new Error('DataURL export failed (canvas might be too large)');

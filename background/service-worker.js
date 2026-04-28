@@ -11,7 +11,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'REGION_SELECTED') {
     handleRegionSelected(sender.tab, message.rect, message.devicePixelRatio);
   } else if (message.type === 'CAPTURE_PART_REQUEST') {
-    // Robust async capture
+    // Capture as JPEG for memory efficiency
     handleCapturePart(sender.tab.windowId).then(dataUrl => {
       sendResponse({ dataUrl });
     }).catch(err => {
@@ -27,7 +27,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function handleCapturePart(windowId) {
   return new Promise((resolve, reject) => {
-    chrome.tabs.captureVisibleTab(windowId, { format: 'png' }, (dataUrl) => {
+    chrome.tabs.captureVisibleTab(windowId, { format: 'jpeg', quality: 90 }, (dataUrl) => {
       if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
       else resolve(dataUrl);
     });
@@ -44,7 +44,7 @@ async function handleRegionCapture(tabId) {
 
 async function handleRegionSelected(tab, rect, dpr) {
   try {
-    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
+    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'jpeg', quality: 90 });
     const croppedDataUrl = await cropImage(dataUrl, rect, dpr);
     await openEditor(tab, croppedDataUrl);
   } catch (e) { console.error('SnapMark: Region failed', e); }
@@ -54,7 +54,7 @@ async function handleRegionSelected(tab, rect, dpr) {
 async function handleVisibleCapture(tabId) {
   try {
     const tab = await chrome.tabs.get(tabId);
-    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
+    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'jpeg', quality: 90 });
     await openEditor(tab, dataUrl);
   } catch (e) { console.error('SnapMark: Visible failed', e); }
 }
