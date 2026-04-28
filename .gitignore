@@ -1,0 +1,10 @@
+# Supabase Credentials
+editor/supabase-config.js
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Extension specific
+*.log
+.supabase/

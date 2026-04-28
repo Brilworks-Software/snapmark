@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "SnapMark: Screenshot, Annotate & Share Instantly",
+  "short_name": "SnapMark",
+  "version": "1.0.0",
+  "default_locale": "en",
+  "description": "Capture any area of your screen, annotate with arrows, shapes, text & blur, then copy or download — instantly. No login. No uploads. By Brilworks.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "tabs",
+    "clipboardWrite"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "SnapMark — Screenshot & Annotate"
+  },
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["editor/editor.html", "editor/editor.css", "editor/editor.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
