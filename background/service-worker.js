@@ -100,7 +100,7 @@ async function stitchImages(images, totalWidth, totalHeight) {
   if (contexts.length === 0) {
     await chrome.offscreen.createDocument({
       url: chrome.runtime.getURL('offscreen/offscreen.html'),
-      reasons: ['DOM_CANVAS'],
+      reasons: ['BLOBS'],
       justification: 'Stitching'
     });
   }
