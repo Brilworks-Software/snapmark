@@ -46,9 +46,15 @@ async function init() {
   renderColors();
   bindControls();
 
-  const result = await chrome.storage.session.get('snapmark_pending_image');
+  // Load image from local storage
+  const result = await chrome.storage.local.get(['snapmark_pending_image', 'snapmark_source_url']);
   if (result.snapmark_pending_image) {
     await loadImage(result.snapmark_pending_image);
+    // Save to history
+    saveToHistory(result.snapmark_pending_image);
+    // Clear the temporary large image to free up storage
+    chrome.storage.local.remove('snapmark_pending_image');
+  } else {
   }
 }
 

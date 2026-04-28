@@ -69,7 +69,8 @@ async function finishFullPageCapture(tab, data) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 async function openEditor(tab, dataUrl) {
-  await chrome.storage.session.set({
+  // Use local storage for large images to avoid session limits
+  await chrome.storage.local.set({
     'snapmark_pending_image': dataUrl,
     'snapmark_source_url': tab.url,
     'snapmark_timestamp': Date.now()
