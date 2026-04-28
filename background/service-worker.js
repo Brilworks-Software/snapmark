@@ -74,7 +74,11 @@ async function finishFullPageCapture(tab, data) {
     const { segments, width, height } = data;
     const stitchedDataUrl = await stitchImages(segments, width, height);
     await openEditor(tab, stitchedDataUrl);
-  } catch (e) { console.error('SnapMark: Stitching failed', e); }
+  } catch (e) {
+    console.error('SnapMark: Stitching failed', e);
+    // Notify the content script about the error
+    chrome.tabs.sendMessage(tab.id, { type: 'CAPTURE_ERROR', error: e.message });
+  }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────

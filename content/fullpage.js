@@ -68,7 +68,15 @@
   } catch (err) {
     console.error('SnapMark: Full-page error:', err);
     progress.style.background = '#EF4444';
-    progress.textContent = '❌ Capture Failed';
-    setTimeout(() => progress.remove(), 3000);
+    progress.textContent = '❌ Capture Failed: ' + (err.message || 'Unknown');
+    setTimeout(() => progress.remove(), 4000);
   }
 })();
+
+// Listen for errors from background during stitching
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.type === 'CAPTURE_ERROR') {
+    alert('Capture Failed: ' + msg.error);
+    window.location.reload(); // Reset page state
+  }
+});
