@@ -1,0 +1,39 @@
+# SnapMark: Pro Screenshot & Annotation Tool
+
+SnapMark is a lightweight, high-performance Chrome extension designed for instant screen capture, professional markup, and visual feedback. It bridges the gap between seeing a problem and communicating it.
+
+## 🚀 Core Value Proposition
+The fastest workflow for capturing any web page, annotating with precision tools (arrows, text, blur), and sharing via instant cloud links or clipboard. No login required for core functionality.
+
+## ✨ Key Features & Capabilities
+
+- **Screen Capture**:
+  - **Region Capture**: Select any part of the viewport with crosshair precision.
+  - **Visible Area**: One-click capture of everything currently on screen.
+- **Annotation & Markup Suite**:
+  - **Visual Pointers**: Professional arrows and shapes (rectangles, ellipses) for clear direction.
+  - **High-Performance Pen**: Lag-free freehand drawing for quick highlights.
+  - **Contextual Text**: High-visibility typography for detailed notes.
+  - **Privacy Redaction**: Smart blur/pixelate tool to hide sensitive PII, passwords, or data.
+- **Workflow & Sharing**:
+  - **Instant Cloud Sharing**: Powered by Supabase. One click to get a public URL.
+  - **Smart Copy**: Automatic merging of layers for instant clipboard pasting (Ctrl+C).
+  - **Local History**: Privacy-focused local storage of the last 10 captures.
+  - **Keyboard Driven**: Full shortcut support (A for Arrow, T for Text, etc.) for power users.
+
+## 🛠️ Technical Implementation
+- **Architecture**: Manifest V3 compliant service worker and content scripts.
+- **Graphics**: Dual-layer HTML5 Canvas system (Base Layer + Annotation Layer) for non-destructive editing.
+- **Storage**: Supabase Storage integration for globally accessible screenshot links.
+- **Privacy**: Zero-tracking, zero-account-required philosophy.
+
+## 🎯 Primary Use Cases
+- **Software Development**: Fast visual bug reporting and PR context.
+- **Design Feedback**: Quick UI/UX critiques with visual pointers.
+- **Content Creation**: Snapping and marking up web references for research.
+- **Productivity**: Replacing traditional "save-as" workflows with instant links.
+
+## 🔗 Links & Resources
+- **Repository**: https://github.com/drdhavaltrivedi/snapmark
+- **Landing Page**: https://snapmark.vercel.app
+- **Web Store**: [Pending Submission]
