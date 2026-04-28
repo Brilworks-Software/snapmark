@@ -2,74 +2,118 @@
   <img src="assets/logo.png" width="128" height="128" alt="SnapMark Logo">
 </p>
 
-# SnapMark: Screenshot, Annotate & Share Instantly 🚀
+# SnapMark: Pro Screenshot & Markup Suite 🚀
 
-SnapMark is a powerful, lightweight Chrome extension designed for speed and productivity. Capture any part of your screen, add professional annotations, and share instantly via a link—all within seconds.
+SnapMark is a high-performance, privacy-first Chrome extension for capturing, annotating, and sharing screenshots instantly. Built for developers, designers, and product managers who need to communicate visually at the speed of thought.
 
 ![SnapMark Hero Banner](assets/hero.png)
 
-## ✨ Features
+## 🌐 Live Presence
+- **Landing Page**: [snapmark.brilworks.com](https://snapmark.brilworks.com)
+- **GitHub**: [github.com/Brilworks-Software/snapmark](https://github.com/Brilworks-Software/snapmark)
 
-- **Precision Capture**: Select specific regions or capture the entire visible area.
-- **Pro Annotation Suite**:
-  - **Arrows & Shapes**: Point out details with precision.
-  - **Pen Tool**: Free-hand drawing for quick highlights.
-  - **Text Tool**: Add clear context with professional typography.
-  - **Blur/Redact**: Instantly hide sensitive information.
-- **Instant Sharing**: Upload to Supabase Storage and get a shareable link in one click.
-- **Copy to Clipboard**: One-click copy for quick pasting into Slack, Discord, or Email.
-- **Local History**: Keep track of your last 10 screenshots locally.
-- **Privacy First**: No account required. Your data is stored in your own Supabase project.
+---
+
+## 🗺️ User Flow
+
+```mermaid
+graph TD
+    A[User clicks Extension] --> B{Choose Action}
+    B -->|Region Capture| C[Drag & Select Area]
+    B -->|Visible Capture| D[Full Screen Grab]
+    B -->|Full Page| E[Redirect to Pricing]
+    
+    C --> F[Annotation Editor]
+    D --> F
+    
+    F --> G[Markup: Arrows, Shapes, Text, Blur, Crop]
+    G --> H{Finalize}
+    
+    H -->|Download| I[Save PNG locally]
+    H -->|Copy| J[Copy to Clipboard]
+    H -->|Share| K[Upload to Supabase]
+    
+    K --> L[Copy Public Link]
+    
+    M[Landing Page] --> N[Click Upgrade Now]
+    N --> O[Fill Lead Form]
+    O --> P[Save to Supabase & Notify Slack]
+```
+
+---
+
+## 🏗️ Architecture & Component Flow
+
+SnapMark follows a modular architecture using Manifest V3 and Vercel Serverless:
+
+- **Frontend (Extension)**: 
+    - `popup/`: User entry point.
+    - `content/`: Selection overlay injection.
+    - `background/`: Core logic and image processing (OffscreenCanvas).
+    - `editor/`: Advanced canvas-based annotation engine.
+- **Backend (Cloud)**:
+    - **Supabase Storage**: Hosts public screenshots.
+    - **Vercel API**: Securely handles Pro leads and Slack integrations.
+    - **Slack API**: Instant notifications for business intelligence.
+
+---
+
+## 📊 Database Schema (ER Diagram)
+
+```mermaid
+erDiagram
+    LEADS {
+        uuid id PK
+        timestamp created_at
+        string name
+        string email
+        string ip
+        string location
+        string device
+    }
+    
+    STORAGE_BUCKETS ||--o{ SCREENSHOTS : "contains"
+    SCREENSHOTS {
+        string name PK
+        blob data
+        string content_type
+    }
+```
+
+---
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: Vanilla JavaScript, HTML5 Canvas, CSS3.
-- **Backend**: Supabase (Storage & Database).
-- **Extension API**: Manifest V3.
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- A Supabase account and project.
-- A public bucket named `screenshots` in your Supabase project.
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/snapmark.git
-   ```
-2. Setup Supabase:
-   - Copy `editor/supabase-config.example.js` to `editor/supabase-config.js`.
-   - Fill in your `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
-3. Load in Chrome:
-   - Open Chrome and go to `chrome://extensions/`.
-   - Enable **Developer mode** (top right).
-   - Click **Load unpacked** and select the root directory of this project.
-
-## 📂 Project Structure
-
-```text
-snapmark/
-├── _locales/          # Internationalization
-├── background/        # Service worker for screenshot logic
-├── content/           # Content scripts for region selection
-├── editor/            # Annotation UI and Supabase integration
-├── icons/             # Extension icons
-├── popup/             # Extension popup menu
-├── supabase/          # Database migrations
-└── manifest.json      # Extension manifest
-```
-
-## 🛡️ Security
-
-- **RLS (Row Level Security)**: Ensure your `screenshots` bucket has appropriate RLS policies for anonymous access if you want public sharing.
-- **Config Management**: Your credentials are kept in `supabase-config.js`, which is ignored by Git to prevent leaks.
-
-## 📝 License
-
-Distributed under the MIT License. See `LICENSE` for more information.
+- **Extension**: Vanilla JavaScript, HTML5 Canvas API, Chrome Extension API (MV3).
+- **Backend**: Supabase (Storage & DB), Vercel Serverless Functions (Node.js).
+- **Styling**: Vanilla CSS3 (Custom Glassmorphism Design).
+- **Integrations**: Slack Webhooks, IPAPI for Geolocation.
 
 ---
+
+## 🚀 Deployment & Configuration
+
+### Prerequisites
+1. **Supabase**: Create a project and a public bucket named `screenshots`.
+2. **Slack**: Create an App and get an OAuth token with `chat:write` permissions.
+3. **Vercel**: Link your GitHub repo and set the following environment variables:
+   - `SLACK_TOKEN`
+   - `SLACK_CHANNEL_ID`
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY`
+
+### Local Setup
+1. Clone the repo.
+2. Copy `editor/supabase-config.example.js` to `editor/supabase-config.js` and add your keys.
+3. Load the root folder in Chrome via **Load Unpacked**.
+
+---
+
+## 🛡️ Security & Privacy
+- **No Third-Party Analytics**: We don't track your behavior.
+- **Local-First**: Annotations are processed entirely on your machine.
+- **Secure API**: All business logic and tokens are handled on the server-side via Vercel.
+
+---
+
 Built with ❤️ by [Brilworks](https://brilworks.com)
