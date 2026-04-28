@@ -1,43 +1,30 @@
 // background/service-worker.js
 
-let captureSession = {
-  segments: [],
-  tabId: null,
-  width: 0,
-  height: 0
-};
-
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'START_REGION_CAPTURE') {
     handleRegionCapture(message.tabId);
   } else if (message.type === 'START_VISIBLE_CAPTURE') {
     handleVisibleCapture(message.tabId);
   } else if (message.type === 'START_FULL_PAGE_CAPTURE') {
-    captureSession = { segments: [], tabId: message.tabId, width: 0, height: 0 };
     handleFullPageCapture(message.tabId);
-  } else if (message.type === 'PUSH_SEGMENT') {
-    captureSession.segments.push(message.segment);
-    sendResponse({ success: true });
-  } else if (message.type === 'FINISH_FULL_PAGE_CAPTURE') {
-    captureSession.width = message.data.width;
-    captureSession.height = message.data.height;
-    finishFullPageCapture(sender.tab);
   } else if (message.type === 'CAPTURE_PART_REQUEST') {
     handleCapturePart(sender.tab.windowId).then(dataUrl => {
       sendResponse({ dataUrl });
     }).catch(err => {
       sendResponse({ error: err.message });
     });
-    return true;
+    return true; 
+  } else if (message.type === 'FINISH_FULL_PAGE_CAPTURE') {
+    finishFullPageCapture(sender.tab, message.data);
   } else if (message.type === 'REGION_SELECTED') {
     handleRegionSelected(sender.tab, message.rect, message.devicePixelRatio);
   }
-
   return false;
 });
 
 async function handleCapturePart(windowId) {
   return new Promise((resolve, reject) => {
+    // Quality 0.8 to save memory
     chrome.tabs.captureVisibleTab(windowId, { format: 'jpeg', quality: 80 }, (dataUrl) => {
       if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
       else resolve(dataUrl);
@@ -47,25 +34,33 @@ async function handleCapturePart(windowId) {
 
 async function handleFullPageCapture(tabId) {
   try {
+    // Clear old segments before starting
+    const all = await chrome.storage.local.get(null);
+    const keys = Object.keys(all).filter(k => k.startsWith('sm_seg_'));
+    await chrome.storage.local.remove(keys);
+    
     await chrome.scripting.executeScript({ target: { tabId }, files: ['content/fullpage.js'] });
   } catch (e) { console.error('FullPage script failed', e); }
 }
 
-async function finishFullPageCapture(tab) {
+async function finishFullPageCapture(tab, data) {
   try {
-    const { segments, width, height } = captureSession;
-    console.log(`Background: Stitching ${segments.length} segments...`);
-    const stitchedDataUrl = await stitchImages(segments, width, height);
+    const { width, height, count } = data;
+    console.log(`Background: Stitching ${count} segments from storage...`);
+    
+    const stitchedDataUrl = await stitchImages(count, width, height);
     await openEditor(tab, stitchedDataUrl);
+    
+    // Cleanup segments
+    const keys = Array.from({ length: count }, (_, i) => `sm_seg_${i}`);
+    await chrome.storage.local.remove(keys);
   } catch (e) {
     console.error('Stitching failed', e);
     chrome.tabs.sendMessage(tab.id, { type: 'CAPTURE_ERROR', error: e.message });
-  } finally {
-    captureSession = { segments: [], tabId: null, width: 0, height: 0 };
   }
 }
 
-async function stitchImages(images, totalWidth, totalHeight) {
+async function stitchImages(count, totalWidth, totalHeight) {
   const contexts = await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
   if (contexts.length === 0) {
     await chrome.offscreen.createDocument({
@@ -74,11 +69,13 @@ async function stitchImages(images, totalWidth, totalHeight) {
       justification: 'Stitching'
     });
   }
+  
   const response = await chrome.runtime.sendMessage({
-    type: 'stitch-images',
+    type: 'stitch-images-from-storage',
     target: 'offscreen',
-    data: { images, totalWidth, totalHeight }
+    data: { count, totalWidth, totalHeight }
   });
+  
   await chrome.offscreen.closeDocument();
   if (!response?.success) throw new Error(response?.error || 'Stitch failed');
   return response.dataUrl;

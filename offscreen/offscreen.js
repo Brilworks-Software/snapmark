@@ -1,9 +1,9 @@
 // offscreen/offscreen.js
 
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
-  if (message.type === 'stitch-images') {
-    const { images, totalWidth, totalHeight } = message.data;
-    console.log(`Offscreen: Stitching ${images.length} segments into ${totalWidth}x${totalHeight}`);
+  if (message.type === 'stitch-images-from-storage') {
+    const { count, totalWidth, totalHeight } = message.data;
+    console.log(`Offscreen: Stitching ${count} segments from storage into ${totalWidth}x${totalHeight}`);
     
     try {
       const MAX_CANVAS_HEIGHT = 16000; 
@@ -14,38 +14,36 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       canvas.height = finalHeight;
       const ctx = canvas.getContext('2d');
 
-      if (!ctx) throw new Error('Failed to get 2D context');
-
-      // Fill with white background initially
+      // White background fallback
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, totalWidth, finalHeight);
 
-      for (let i = 0; i < images.length; i++) {
-        const imgData = images[i];
-        if (imgData.y >= finalHeight) {
-          console.log(`Offscreen: Skipping segment ${i} (out of bounds)`);
+      for (let i = 0; i < count; i++) {
+        const key = `sm_seg_${i}`;
+        const result = await chrome.storage.local.get(key);
+        const segment = result[key];
+
+        if (!segment) {
+          console.warn(`Offscreen: Missing segment ${i}`);
           continue;
         }
 
-        console.log(`Offscreen: Loading segment ${i}...`);
-        const img = await loadImage(imgData.dataUrl);
-        
-        console.log(`Offscreen: Drawing segment ${i} at y=${imgData.y} (size: ${img.width}x${img.height})`);
-        // Draw with explicit source and destination to ensure no scaling issues
-        ctx.drawImage(img, 0, 0, img.width, img.height, imgData.x, imgData.y, img.width, img.height);
+        if (segment.y >= finalHeight) continue;
+
+        const img = await loadImage(segment.dataUrl);
+        ctx.drawImage(img, 0, 0, img.width, img.height, 0, segment.y, img.width, img.height);
       }
 
-      console.log('Offscreen: Finalizing canvas to JPEG...');
-      const finalDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      console.log('Offscreen: Exporting final image...');
+      const finalDataUrl = canvas.toDataURL('image/jpeg', 0.8);
       
-      if (!finalDataUrl || finalDataUrl.length < 100) {
-        throw new Error('Canvas export failed or result too small');
+      if (!finalDataUrl || finalDataUrl.length < 1000) {
+        throw new Error('Canvas export produced invalid result');
       }
 
-      console.log(`Offscreen: Stitching complete. DataURL length: ${finalDataUrl.length}`);
       sendResponse({ success: true, dataUrl: finalDataUrl });
     } catch (error) {
-      console.error('Offscreen: Error:', error);
+      console.error('Offscreen: Stitching failed:', error);
       sendResponse({ success: false, error: error.message });
     }
     return true; 
@@ -56,7 +54,7 @@ function loadImage(url) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('Segment image failed to load'));
+    img.onerror = () => reject(new Error('Image load failed'));
     img.src = url;
   });
 }

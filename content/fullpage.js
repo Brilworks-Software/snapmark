@@ -18,9 +18,10 @@
   const dpr = window.devicePixelRatio;
   
   window.scrollTo(0, 0);
-  await new Promise(r => setTimeout(r, 500));
+  await new Promise(r => setTimeout(r, 600));
 
   let currentY = 0;
+  let count = 0;
   try {
     while (currentY < totalHeight) {
       const scrollY = Math.min(currentY, totalHeight - vh);
@@ -29,20 +30,21 @@
       const percent = Math.round((currentY / totalHeight) * 100);
       progress.textContent = `📸 Capturing: ${percent}%`;
       
-      await new Promise(r => setTimeout(r, 700)); 
+      // Wait for stable paint
+      await new Promise(r => setTimeout(r, 800)); 
       
       const response = await chrome.runtime.sendMessage({ type: 'CAPTURE_PART_REQUEST' });
       
       if (response && response.dataUrl) {
-        // Send segment to background immediately to save memory in content script
-        await chrome.runtime.sendMessage({
-          type: 'PUSH_SEGMENT',
-          segment: {
+        // Save segment to storage with a unique key
+        // We also store the scroll position so background knows where to place it
+        await chrome.storage.local.set({
+          [`sm_seg_${count}`]: {
             dataUrl: response.dataUrl,
-            x: 0,
             y: scrollY * dpr
           }
         });
+        count++;
       }
 
       if (currentY + vh >= totalHeight) break;
@@ -50,15 +52,19 @@
     }
 
     progress.textContent = '🎨 Stitching...';
+    // Back to top to avoid having the progress bar in the editor if captured accidentally
+    window.scrollTo(0, 0);
+    
     await chrome.runtime.sendMessage({
       type: 'FINISH_FULL_PAGE_CAPTURE',
       data: {
         width: window.innerWidth * dpr,
-        height: totalHeight * dpr
+        height: totalHeight * dpr,
+        count: count
       }
     });
     
-    progress.remove();
+    setTimeout(() => progress.remove(), 1000);
   } catch (err) {
     progress.style.background = '#EF4444';
     progress.textContent = '❌ Capture Failed';
