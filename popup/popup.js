@@ -34,10 +34,40 @@ async function init() {
     setTimeout(() => window.close(), 100);
   });
 
+  // ── Pro State Check
+  const { pro_unlocked } = await chrome.storage.local.get('pro_unlocked');
+  if (pro_unlocked) {
+    document.getElementById('btnShowPromo').style.display = 'none';
+    document.getElementById('proStatus').style.display = 'block';
+  }
+
   // ── Full page (Pro)
-  document.getElementById('btnFullPage').addEventListener('click', () => {
-    // Redirect to landing page pricing section
-    chrome.tabs.create({ url: 'https://snapmark.brilworks.com/#pricing' });
+  document.getElementById('btnFullPage').addEventListener('click', async () => {
+    const { pro_unlocked } = await chrome.storage.local.get('pro_unlocked');
+    if (pro_unlocked) {
+      // In a real pro version, this would trigger the scrolling capture.
+      // For now, we'll just show it's enabled.
+      alert('Full Page Capture is enabled! (Feature coming soon to Pro users)');
+    } else {
+      chrome.tabs.create({ url: 'https://snapmark.brilworks.com/#pricing' });
+    }
+  });
+
+  // ── Promo Code Logic
+  document.getElementById('btnShowPromo').addEventListener('click', () => {
+    document.getElementById('promoInputGroup').style.display = 'flex';
+    document.getElementById('btnShowPromo').style.display = 'none';
+  });
+
+  document.getElementById('btnRedeem').addEventListener('click', async () => {
+    const code = document.getElementById('promoCode').value.trim();
+    if (code === 'Brilworks') {
+      await chrome.storage.local.set({ pro_unlocked: true });
+      document.getElementById('promoInputGroup').style.display = 'none';
+      document.getElementById('proStatus').style.display = 'block';
+    } else {
+      alert('Invalid promo code');
+    }
   });
 
   // ── Keyboard shortcuts
