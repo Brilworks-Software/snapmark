@@ -11,17 +11,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'REGION_SELECTED') {
     handleRegionSelected(sender.tab, message.rect, message.devicePixelRatio);
   } else if (message.type === 'CAPTURE_PART_REQUEST') {
-    // Capture the visible part and send back to content script
-    chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: 'png' }, (dataUrl) => {
+    // Robust async capture
+    handleCapturePart(sender.tab.windowId).then(dataUrl => {
       sendResponse({ dataUrl });
+    }).catch(err => {
+      console.error('Capture part failed', err);
+      sendResponse({ error: err.message });
     });
-    return true; // async
+    return true; // Keep channel open for async
   } else if (message.type === 'FINISH_FULL_PAGE_CAPTURE') {
     finishFullPageCapture(sender.tab, message.data);
   }
-
   return false;
 });
+
+async function handleCapturePart(windowId) {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.captureVisibleTab(windowId, { format: 'png' }, (dataUrl) => {
+      if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+      else resolve(dataUrl);
+    });
+  });
+}
 
 // ─── Region capture flow ──────────────────────────────────────────────
 async function handleRegionCapture(tabId) {
@@ -51,7 +62,6 @@ async function handleVisibleCapture(tabId) {
 // ─── Full page capture ───────────────────────────────────────────────
 async function handleFullPageCapture(tabId) {
   try {
-    // Inject the new scrolling script
     await chrome.scripting.executeScript({
       target: { tabId },
       files: ['content/fullpage.js']
@@ -69,12 +79,15 @@ async function finishFullPageCapture(tab, data) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 async function openEditor(tab, dataUrl) {
-  // Use local storage for large images to avoid session limits
+  // Clear any old data first
+  await chrome.storage.local.remove('snapmark_pending_image');
+  
   await chrome.storage.local.set({
     'snapmark_pending_image': dataUrl,
     'snapmark_source_url': tab.url,
     'snapmark_timestamp': Date.now()
   });
+  
   await chrome.tabs.create({ url: chrome.runtime.getURL('editor/editor.html') });
 }
 
