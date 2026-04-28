@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "SnapMark: Screenshot, Annotate & Share Instantly",
   "short_name": "SnapMark",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "default_locale": "en",
   "description": "Capture any area, full-page scrolling screenshots, and annotate with arrows, shapes, text & blur — instantly.",
   "permissions": [

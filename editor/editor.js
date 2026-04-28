@@ -77,10 +77,20 @@ async function loadImage(dataUrl) {
 
 function fitCanvasToWindow(w, h) {
   const area = document.getElementById('canvasArea');
-  const scale = Math.min(1, (area.clientWidth - 40) / w, (area.clientHeight - 40) / h);
+  const padding = 60;
+  const availableW = area.clientWidth - padding;
+  const availableH = area.clientHeight - padding;
+  
+  const scale = Math.min(1, availableW / w, availableH / h);
+  
   const wrapper = document.getElementById('canvasWrapper');
-  wrapper.style.transform = scale < 1 ? `scale(${scale})` : 'none';
-  wrapper.style.transformOrigin = 'top left';
+  wrapper.style.width = `${w * scale}px`;
+  wrapper.style.height = `${h * scale}px`;
+  
+  [baseCanvas, drawCanvas, cursorCanvas].forEach(c => {
+    c.style.width = '100%';
+    c.style.height = '100%';
+  });
 }
 
 // ─── Interaction ──────────────────────────────────────────────────────

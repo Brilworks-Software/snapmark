@@ -140,8 +140,9 @@ html, body { height: 100%; overflow: hidden; background: var(--bg-dark); color: 
 
 #canvasWrapper {
   position: relative;
-  display: inline-block;
   box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 8px 40px rgba(0,0,0,0.6);
+  background: #fff;
+  margin: auto;
 }
 
 canvas { display: block; }
