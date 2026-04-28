@@ -16,6 +16,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; 
   } else if (message.type === 'FINISH_FULL_PAGE_CAPTURE') {
     finishFullPageCapture(sender.tab, message.data);
+  } else if (message.type === 'PUSH_SEGMENT') {
+    const key = `sm_seg_${message.index}`;
+    chrome.storage.local.set({ [key]: message.segment }, () => {
+      sendResponse({ success: true });
+    });
+    return true;
   } else if (message.type === 'REGION_SELECTED') {
     handleRegionSelected(sender.tab, message.rect, message.devicePixelRatio);
   }

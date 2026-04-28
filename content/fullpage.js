@@ -36,10 +36,11 @@
       const response = await chrome.runtime.sendMessage({ type: 'CAPTURE_PART_REQUEST' });
       
       if (response && response.dataUrl) {
-        // Save segment to storage with a unique key
-        // We also store the scroll position so background knows where to place it
-        await chrome.storage.local.set({
-          [`sm_seg_${count}`]: {
+        // Send segment to background to save (safer than saving from content script)
+        await chrome.runtime.sendMessage({
+          type: 'PUSH_SEGMENT',
+          index: count,
+          segment: {
             dataUrl: response.dataUrl,
             y: scrollY * dpr
           }
