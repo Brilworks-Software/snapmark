@@ -70,11 +70,15 @@
 
     cleanup();
 
-    // Send selection to background
-    chrome.runtime.sendMessage({
-      type: 'REGION_SELECTED',
-      rect,
-      devicePixelRatio: window.devicePixelRatio || 1
+    // Use double requestAnimationFrame to ensure DOM is updated and repainted
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        chrome.runtime.sendMessage({
+          type: 'REGION_SELECTED',
+          rect,
+          devicePixelRatio: window.devicePixelRatio || 1
+        });
+      });
     });
   }
 

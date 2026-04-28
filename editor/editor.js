@@ -276,7 +276,11 @@ function onMouseUp(e) {
     case 'arrow':     drawArrow(startX, startY, pos.x, pos.y, drawCtx); break;
     case 'rectangle': drawRect(startX, startY, pos.x, pos.y, drawCtx); break;
     case 'circle':    drawEllipse(startX, startY, pos.x, pos.y, drawCtx); break;
-    case 'blur':      applyBlur(startX, startY, pos.x - startX, pos.y - startY); break;
+    case 'blur':      
+      saveUndoState(); // Save state BEFORE applying blur to base canvas
+      applyBlur(startX, startY, pos.x - startX, pos.y - startY); 
+      break;
+    case 'crop':      confirmCrop(startX, startY, pos.x, pos.y); break;
   }
 
   updateUndoRedo();
@@ -341,34 +345,42 @@ function drawEllipse(x1, y1, x2, y2, ctx) {
 }
 
 function applyBlur(x, y, w, h) {
-  // Pixelate the selected region in the BASE canvas
   const bx = Math.min(x, x + w);
   const by = Math.min(y, y + h);
   const bw = Math.abs(w);
   const bh = Math.abs(h);
-  if (bw < 4 || bh < 4) return;
+  if (bw < 5 || bh < 5) return;
 
-  const PIXEL_SIZE = Math.max(8, Math.round(Math.max(bw, bh) / 20));
-  const imageData = baseCtx.getImageData(bx, by, bw, bh);
-  const data = imageData.data;
+  // Use a temporary canvas for better blur effect
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = bw;
+  tempCanvas.height = bh;
+  const tCtx = tempCanvas.getContext('2d');
 
-  for (let py = 0; py < bh; py += PIXEL_SIZE) {
-    for (let px = 0; px < bw; px += PIXEL_SIZE) {
-      const i = (py * bw + px) * 4;
-      const r = data[i], g = data[i + 1], b = data[i + 2];
-      for (let dy = 0; dy < PIXEL_SIZE && py + dy < bh; dy++) {
-        for (let dx = 0; dx < PIXEL_SIZE && px + dx < bw; dx++) {
-          const j = ((py + dy) * bw + (px + dx)) * 4;
-          data[j] = r; data[j + 1] = g; data[j + 2] = b;
-        }
-      }
-    }
-  }
-  baseCtx.putImageData(imageData, bx, by);
+  // Draw region to temp
+  tCtx.drawImage(baseCanvas, bx, by, bw, bh, 0, 0, bw, bh);
+
+  // Apply pixelation
+  const PIXEL_SIZE = Math.max(8, Math.round(Math.min(bw, bh) / 10));
+  tCtx.imageSmoothingEnabled = false;
+  
+  const smallW = Math.max(1, bw / PIXEL_SIZE);
+  const smallH = Math.max(1, bh / PIXEL_SIZE);
+  
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = smallW;
+  offCanvas.height = smallH;
+  offCanvas.getContext('2d').drawImage(tempCanvas, 0, 0, bw, bh, 0, 0, smallW, smallH);
+  
+  baseCtx.imageSmoothingEnabled = false;
+  baseCtx.drawImage(offCanvas, 0, 0, smallW, smallH, bx, by, bw, bh);
+  baseCtx.imageSmoothingEnabled = true;
 }
 
 // ─── Text input ───────────────────────────────────────────────────────
-let textPlacedX, textPlacedY;
+// ─── Text input (Improved: Draggable & Resizable) ─────────────────────
+let isDraggingText = false;
+let textOffset = { x: 0, y: 0 };
 
 function showTextInput(e) {
   const pos = getCanvasPos(e);
@@ -380,14 +392,43 @@ function showTextInput(e) {
   textInput.style.display = 'block';
   textInput.style.left = (rect.left + pos.x * scaleX + window.scrollX) + 'px';
   textInput.style.top  = (rect.top  + pos.y * scaleY + window.scrollY) + 'px';
+  textInput.style.width = 'auto';
+  textInput.style.height = 'auto';
+
   textPlacedX = pos.x;
   textPlacedY = pos.y;
 
   const textarea = document.getElementById('textInputArea');
-  textarea.style.fontSize = `${Math.max(14, strokeSize * 4)}px`;
+  textarea.style.fontSize = `${Math.max(16, strokeSize * 5)}px`;
   textarea.style.color = activeColor;
   textarea.value = '';
-  textarea.focus();
+  
+  // Auto-focus
+  setTimeout(() => textarea.focus(), 10);
+
+  // Make it draggable
+  textInput.onmousedown = (me) => {
+    if (me.target === textarea) return;
+    isDraggingText = true;
+    textOffset.x = me.clientX - textInput.offsetLeft;
+    textOffset.y = me.clientY - textInput.offsetTop;
+  };
+
+  window.onmousemove = (me) => {
+    if (!isDraggingText) return;
+    textInput.style.left = (me.clientX - textOffset.x) + 'px';
+    textInput.style.top  = (me.clientY - textOffset.y) + 'px';
+    
+    const rect = drawCanvas.getBoundingClientRect();
+    const scX = drawCanvas.width / rect.width;
+    const scY = drawCanvas.height / rect.height;
+    textPlacedX = (textInput.offsetLeft - rect.left - window.scrollX) * scX;
+    textPlacedY = (textInput.offsetTop - rect.top - window.scrollY) * scY;
+  };
+
+  window.onmouseup = () => {
+    isDraggingText = false;
+  };
 
   textarea.onkeydown = (ev) => {
     if (ev.key === 'Enter' && !ev.shiftKey) {
@@ -404,12 +445,13 @@ function commitText(text) {
   const fontSize = Math.max(16, strokeSize * 5);
   drawCtx.font = `bold ${fontSize}px -apple-system, sans-serif`;
   drawCtx.fillStyle = activeColor;
-  drawCtx.strokeStyle = 'rgba(0,0,0,0.6)';
-  drawCtx.lineWidth = 3;
-  // Text shadow for visibility on any background
+  drawCtx.strokeStyle = 'rgba(0,0,0,0.5)';
+  drawCtx.lineWidth = 4;
+  drawCtx.textBaseline = 'top';
+
   const lines = text.split('\n');
   lines.forEach((line, i) => {
-    const yOffset = textPlacedY + (i * (fontSize * 1.3));
+    const yOffset = textPlacedY + (i * (fontSize * 1.2));
     drawCtx.strokeText(line, textPlacedX, yOffset);
     drawCtx.fillText(line, textPlacedX, yOffset);
   });
@@ -419,14 +461,59 @@ function commitText(text) {
 
 function cancelTextInput() {
   document.getElementById('textInput').style.display = 'none';
-  document.getElementById('textInputArea').value = '';
+  const textarea = document.getElementById('textInputArea');
+  textarea.value = '';
+  window.onmousemove = null;
+  window.onmouseup = null;
+}
+
+// ─── Crop Logic ───────────────────────────────────────────────────────
+function confirmCrop(x1, y1, x2, y2) {
+  const x = Math.min(x1, x2);
+  const y = Math.min(y1, y2);
+  const w = Math.abs(x2 - x1);
+  const h = Math.abs(y2 - y1);
+  if (w < 10 || h < 10) return;
+
+  saveUndoState();
+
+  // Create temporary canvases to hold the cropped content
+  const tempBase = document.createElement('canvas');
+  tempBase.width = w;
+  tempBase.height = h;
+  tempBase.getContext('2d').drawImage(baseCanvas, x, y, w, h, 0, 0, w, h);
+
+  const tempDraw = document.createElement('canvas');
+  tempDraw.width = w;
+  tempDraw.height = h;
+  tempDraw.getContext('2d').drawImage(drawCanvas, x, y, w, h, 0, 0, w, h);
+
+  // Resize main canvases
+  [baseCanvas, drawCanvas, cursorCanvas].forEach(c => {
+    c.width = w;
+    c.height = h;
+  });
+
+  // Restore content
+  baseCtx.drawImage(tempBase, 0, 0);
+  drawCtx.drawImage(tempDraw, 0, 0);
+
+  // Update dimensions
+  document.getElementById('imageDimensions').textContent = `${Math.round(w)} × ${Math.round(h)}`;
+  
+  // Re-fit if needed
+  fitCanvasToWindow(w, h);
 }
 
 // ─── Undo / Redo ──────────────────────────────────────────────────────
 function saveUndoState() {
-  // Save current draw layer as a snapshot
-  const snapshot = drawCanvas.toDataURL();
-  undoStack.push(snapshot);
+  const state = {
+    base: baseCanvas.toDataURL(),
+    draw: drawCanvas.toDataURL(),
+    width: baseCanvas.width,
+    height: baseCanvas.height
+  };
+  undoStack.push(state);
   if (undoStack.length > 30) undoStack.shift();
   redoStack = [];
   updateUndoRedo();
@@ -434,30 +521,52 @@ function saveUndoState() {
 
 function undo() {
   if (undoStack.length === 0) return;
-  // Save current state to redo
-  redoStack.push(drawCanvas.toDataURL());
+  const currentState = {
+    base: baseCanvas.toDataURL(),
+    draw: drawCanvas.toDataURL(),
+    width: baseCanvas.width,
+    height: baseCanvas.height
+  };
+  redoStack.push(currentState);
   const prev = undoStack.pop();
-  restoreDrawState(prev);
+  restoreFullState(prev);
   updateUndoRedo();
 }
 
 function redo() {
   if (redoStack.length === 0) return;
-  undoStack.push(drawCanvas.toDataURL());
+  const currentState = {
+    base: baseCanvas.toDataURL(),
+    draw: drawCanvas.toDataURL(),
+    width: baseCanvas.width,
+    height: baseCanvas.height
+  };
+  undoStack.push(currentState);
   const next = redoStack.pop();
-  restoreDrawState(next);
+  restoreFullState(next);
   updateUndoRedo();
 }
 
-function restoreDrawState(dataUrl) {
-  drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
-  if (dataUrl) {
-    const img = new Image();
-    img.onload = () => {
-      drawCtx.drawImage(img, 0, 0);
-    };
-    img.src = dataUrl;
-  }
+function restoreFullState(state) {
+  if (!state) return;
+  
+  // Restore dimensions
+  [baseCanvas, drawCanvas, cursorCanvas].forEach(c => {
+    c.width = state.width;
+    c.height = state.height;
+  });
+  document.getElementById('imageDimensions').textContent = `${state.width} × ${state.height}`;
+
+  // Restore images
+  const imgBase = new Image();
+  imgBase.onload = () => baseCtx.drawImage(imgBase, 0, 0);
+  imgBase.src = state.base;
+
+  const imgDraw = new Image();
+  imgDraw.onload = () => drawCtx.drawImage(imgDraw, 0, 0);
+  imgDraw.src = state.draw;
+
+  fitCanvasToWindow(state.width, state.height);
 }
 
 function updateUndoRedo() {
