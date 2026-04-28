@@ -1,0 +1,15 @@
+{
+  "name": "snapmark",
+  "version": "1.0.0",
+  "description": "SnapMark Chrome Extension & Landing Page",
+  "main": "index.html",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Brilworks",
+  "license": "MIT"
+}
