@@ -45,9 +45,9 @@ async function init() {
   document.getElementById('btnFullPage').addEventListener('click', async () => {
     const { pro_unlocked } = await chrome.storage.local.get('pro_unlocked');
     if (pro_unlocked) {
-      // In a real pro version, this would trigger the scrolling capture.
-      // For now, we'll just show it's enabled.
-      alert('Full Page Capture is enabled! (Feature coming soon to Pro users)');
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      chrome.runtime.sendMessage({ type: 'START_FULL_PAGE_CAPTURE', tabId: tab.id });
+      window.close();
     } else {
       chrome.tabs.create({ url: 'https://snapmark.brilworks.com/#pricing' });
     }

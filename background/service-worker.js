@@ -11,6 +11,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     handleVisibleCapture(message.tabId);
   }
 
+  if (message.type === 'START_FULL_PAGE_CAPTURE') {
+    handleFullPageCapture(message.tabId);
+  }
+
   if (message.type === 'REGION_SELECTED') {
     console.log('SnapMark: Region selected', message.rect);
     handleRegionSelected(sender.tab, message.rect, message.devicePixelRatio);
@@ -92,6 +96,86 @@ async function handleVisibleCapture(tabId) {
   } catch (e) {
     console.error('SnapMark: visible capture failed', e);
   }
+}
+
+// ─── Full page capture ───────────────────────────────────────────────
+
+async function handleFullPageCapture(tabId) {
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    
+    // 1. Get page metrics
+    const [metrics] = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        return {
+          width: window.innerWidth,
+          height: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight),
+          vh: window.innerHeight,
+          dpr: window.devicePixelRatio
+        };
+      }
+    });
+
+    const { width, height, vh, dpr } = metrics.result;
+    const segments = [];
+    let currentY = 0;
+
+    // 2. Capture loop
+    while (currentY < height) {
+      const scrollY = currentY;
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        func: (y) => window.scrollTo(0, y),
+        args: [scrollY]
+      });
+
+      // Wait for rendering
+      await new Promise(r => setTimeout(r, 250));
+
+      const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
+      segments.push({ dataUrl, x: 0, y: scrollY * dpr });
+
+      currentY += vh;
+      if (currentY >= height) break;
+    }
+
+    // 3. Stitch images via Offscreen
+    const stitchedDataUrl = await stitchImages(segments, width * dpr, height * dpr);
+
+    // 4. Save and open editor
+    await chrome.storage.session.set({
+      'snapmark_pending_image': stitchedDataUrl,
+      'snapmark_source_url': tab.url,
+      'snapmark_timestamp': Date.now()
+    });
+
+    await chrome.tabs.create({ url: chrome.runtime.getURL('editor/editor.html') });
+
+  } catch (e) {
+    console.error('SnapMark: full page capture failed', e);
+  }
+}
+
+async function stitchImages(images, totalWidth, totalHeight) {
+  // Setup offscreen if needed
+  await chrome.offscreen.createDocument({
+    url: chrome.runtime.getURL('offscreen/offscreen.html'),
+    reasons: ['DOM_CANVAS'],
+    justification: 'Stitch captured screenshots into a full page image'
+  });
+
+  const response = await chrome.runtime.sendMessage({
+    type: 'stitch-images',
+    target: 'offscreen',
+    data: { images, totalWidth, totalHeight }
+  });
+
+  // Close offscreen
+  await chrome.offscreen.closeDocument();
+
+  if (!response.success) throw new Error(response.error);
+  return response.dataUrl;
 }
 
 // ─── Image crop utility ───────────────────────────────────────────────
