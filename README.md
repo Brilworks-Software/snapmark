@@ -1,8 +1,12 @@
+<p align="center">
+  <img src="assets/logo.png" width="128" height="128" alt="SnapMark Logo">
+</p>
+
 # SnapMark: Screenshot, Annotate & Share Instantly 🚀
 
 SnapMark is a powerful, lightweight Chrome extension designed for speed and productivity. Capture any part of your screen, add professional annotations, and share instantly via a link—all within seconds.
 
-![SnapMark Banner](https://via.placeholder.com/1200x600?text=SnapMark+Extension)
+![SnapMark Hero Banner](assets/hero.png)
 
 ## ✨ Features
 
