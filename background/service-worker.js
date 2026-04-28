@@ -110,7 +110,12 @@ async function handleFullPageCapture(tabId) {
       func: () => {
         return {
           width: window.innerWidth,
-          height: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight),
+          height: Math.max(
+            document.body.scrollHeight, 
+            document.documentElement.scrollHeight,
+            document.body.offsetHeight,
+            document.documentElement.offsetHeight
+          ),
           vh: window.innerHeight,
           dpr: window.devicePixelRatio
         };
@@ -123,21 +128,28 @@ async function handleFullPageCapture(tabId) {
 
     // 2. Capture loop
     while (currentY < height) {
-      const scrollY = currentY;
+      const scrollY = Math.min(currentY, height - vh);
       await chrome.scripting.executeScript({
         target: { tabId },
-        func: (y) => window.scrollTo(0, y),
+        func: (y) => {
+          window.scrollTo(0, y);
+          // Force a small delay for repaint
+          return new Promise(r => setTimeout(r, 100));
+        },
         args: [scrollY]
       });
 
-      // Wait for rendering
-      await new Promise(r => setTimeout(r, 250));
+      // Wait extra for slow sites
+      await new Promise(r => setTimeout(r, 300));
 
       const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
-      segments.push({ dataUrl, x: 0, y: scrollY * dpr });
+      
+      // Calculate overlap for the last segment
+      let yOffset = scrollY * dpr;
+      segments.push({ dataUrl, x: 0, y: yOffset });
 
+      if (currentY + vh >= height) break;
       currentY += vh;
-      if (currentY >= height) break;
     }
 
     // 3. Stitch images via Offscreen
@@ -154,16 +166,23 @@ async function handleFullPageCapture(tabId) {
 
   } catch (e) {
     console.error('SnapMark: full page capture failed', e);
+    // Notify user if possible (requires content script messaging)
   }
 }
 
 async function stitchImages(images, totalWidth, totalHeight) {
-  // Setup offscreen if needed
-  await chrome.offscreen.createDocument({
-    url: chrome.runtime.getURL('offscreen/offscreen.html'),
-    reasons: ['DOM_CANVAS'],
-    justification: 'Stitch captured screenshots into a full page image'
+  // Check if offscreen already exists
+  const contexts = await chrome.runtime.getContexts({
+    contextTypes: ['OFFSCREEN_DOCUMENT']
   });
+
+  if (contexts.length === 0) {
+    await chrome.offscreen.createDocument({
+      url: chrome.runtime.getURL('offscreen/offscreen.html'),
+      reasons: ['DOM_CANVAS'],
+      justification: 'Stitch captured screenshots into a full page image'
+    });
+  }
 
   const response = await chrome.runtime.sendMessage({
     type: 'stitch-images',
@@ -171,10 +190,10 @@ async function stitchImages(images, totalWidth, totalHeight) {
     data: { images, totalWidth, totalHeight }
   });
 
-  // Close offscreen
+  // Close offscreen to free memory
   await chrome.offscreen.closeDocument();
 
-  if (!response.success) throw new Error(response.error);
+  if (!response || !response.success) throw new Error(response?.error || 'Stitching timed out');
   return response.dataUrl;
 }
 
