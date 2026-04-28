@@ -8,17 +8,24 @@ const SLACK_CHANNEL_ID = process.env.SLACK_CHANNEL_ID;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Validate environment variables
+  if (!SLACK_TOKEN || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.error('Missing Environment Variables. Please set SLACK_TOKEN, SUPABASE_URL, and SUPABASE_ANON_KEY in Vercel.');
+    return res.status(500).json({ error: 'Server configuration error: Missing environment variables.' });
+  }
+
   const { name, email, ip, location, device } = req.body;
 
   try {
-    // 1. Save to Supabase (Ensure you have a 'leads' table with these columns)
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    // 1. Save to Supabase
     const { error: dbError } = await supabase
       .from('leads')
       .insert([{ name, email, ip, location, device }]);
