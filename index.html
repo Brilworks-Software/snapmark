@@ -58,7 +58,7 @@
             <div class="nav-links">
                 <a href="#features">Features</a>
                 <a href="#how-it-works">How it works</a>
-                <a href="https://github.com" class="btn btn-outline">GitHub</a>
+                <a href="https://github.com/Brilworks-Software/snapmark" class="btn btn-outline">GitHub</a>
             </div>
         </div>
     </nav>
@@ -199,7 +199,7 @@
                 <div class="pricing-card featured">
                     <div class="pricing-header">
                         <h3>Pro</h3>
-                        <div class="price">$5<span>/month</span></div>
+                        <div class="price">$4.99<span>/month</span></div>
                     </div>
                     <ul class="pricing-features">
                         <li>✅ Everything in Starter</li>
@@ -208,11 +208,34 @@
                         <li>✅ Team Collaboration</li>
                         <li>✅ Priority Support</li>
                     </ul>
-                    <a href="#" class="btn btn-primary btn-full">Upgrade Now</a>
+                    <button class="btn btn-primary btn-full" id="openUpgradeModal">Upgrade Now</button>
                 </div>
             </div>
         </div>
     </section>
+
+    <!-- Upgrade Modal -->
+    <div id="upgradeModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <div class="modal-header">
+                <h2>Join SnapMark Pro</h2>
+                <p>Be the first to get access to Full Page Capture and Pro features.</p>
+            </div>
+            <form id="upgradeForm">
+                <div class="form-group">
+                    <label for="userName">Name</label>
+                    <input type="text" id="userName" placeholder="Your Name" required>
+                </div>
+                <div class="form-group">
+                    <label for="userEmail">Email</label>
+                    <input type="email" id="userEmail" placeholder="you@example.com" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full" id="submitUpgrade">Get Pro Access</button>
+            </form>
+            <div id="formStatus" class="form-status"></div>
+        </div>
+    </div>
 
     <section class="faq">
         <div class="container">
@@ -259,5 +282,85 @@
             </div>
         </div>
     </footer>
+
+    <script>
+        // Reveal animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.feature-card, .step, .pricing-card').forEach(el => observer.observe(el));
+
+        // Modal Logic
+        const modal = document.getElementById('upgradeModal');
+        const openBtn = document.getElementById('openUpgradeModal');
+        const closeBtn = document.querySelector('.modal-close');
+        const upgradeForm = document.getElementById('upgradeForm');
+        const formStatus = document.getElementById('formStatus');
+
+        openBtn.addEventListener('click', () => modal.classList.add('active'));
+        closeBtn.addEventListener('click', () => modal.classList.remove('active'));
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.remove('active');
+        });
+
+        // Form Submission & Tracking
+        upgradeForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = document.getElementById('submitUpgrade');
+            const name = document.getElementById('userName').value;
+            const email = document.getElementById('userEmail').value;
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Processing...';
+            formStatus.textContent = '';
+
+            try {
+                // Get Tracking Data
+                let trackingData = {};
+                try {
+                    const trackRes = await fetch('https://ipapi.co/json/');
+                    const data = await trackRes.json();
+                    trackingData = {
+                        ip: data.ip,
+                        location: `${data.city}, ${data.region}, ${data.country_name}`,
+                        device: navigator.userAgent
+                    };
+                } catch (err) {
+                    trackingData = { ip: 'Unknown', location: 'Unknown', device: navigator.userAgent };
+                }
+
+                // Send to API
+                const response = await fetch('/api/upgrade', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        email,
+                        ...trackingData
+                    })
+                });
+
+                if (response.ok) {
+                    formStatus.className = 'form-status success';
+                    formStatus.textContent = '🎉 Awesome! We\'ll contact you soon with Pro access.';
+                    upgradeForm.reset();
+                    setTimeout(() => modal.classList.remove('active'), 3000);
+                } else {
+                    throw new Error('Failed to submit');
+                }
+            } catch (err) {
+                formStatus.className = 'form-status error';
+                formStatus.textContent = '❌ Something went wrong. Please try again.';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Get Pro Access';
+            }
+        });
+    </script>
 </body>
 </html>
