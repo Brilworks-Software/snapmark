@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Server configuration error: Missing environment variables.' });
   }
 
-  const { name, email, ip, location, device } = req.body;
+  const { name, email, ip, location, device, url, referrer } = req.body;
 
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -28,11 +28,10 @@ export default async function handler(req, res) {
     // 1. Save to Supabase
     const { error: dbError } = await supabase
       .from('leads')
-      .insert([{ name, email, ip, location, device }]);
+      .insert([{ name, email, ip, location, device, url, referrer }]);
 
     if (dbError) {
       console.error('Supabase error:', dbError);
-      // We continue anyway so the user doesn't see a failure if only DB fails
     }
 
     // 2. Send to Slack
@@ -52,7 +51,9 @@ export default async function handler(req, res) {
           fields: [
             { type: "mrkdwn", text: `*Location:* ${location || 'Unknown'}` },
             { type: "mrkdwn", text: `*IP:* ${ip || 'Unknown'}` },
-            { type: "mrkdwn", text: `*Device:* ${device || 'Unknown'}` }
+            { type: "mrkdwn", text: `*Device:* ${device || 'Unknown'}` },
+            { type: "mrkdwn", text: `*Page:* ${url || 'Unknown'}` },
+            { type: "mrkdwn", text: `*Referrer:* ${referrer || 'Direct'}` }
           ]
         }
       ]

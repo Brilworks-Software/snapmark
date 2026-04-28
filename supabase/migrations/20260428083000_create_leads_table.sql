@@ -6,7 +6,9 @@ create table if not exists public.leads (
   email text not null,
   ip text,
   location text,
-  device text
+  device text,
+  url text,
+  referrer text
 );
 
 -- Enable RLS
