@@ -249,7 +249,8 @@ function onMouseMove(e) {
   }
 
   // Live shape preview for non-pen tools using cursorCtx
-  if (isDrawing && (activeTool === 'arrow' || activeTool === 'rectangle' || activeTool === 'circle')) {
+  const needsPreview = ['arrow', 'rectangle', 'circle', 'blur', 'crop'].includes(activeTool);
+  if (isDrawing && needsPreview) {
     drawPreview(pos.x, pos.y, cursorCtx);
   }
 }
@@ -291,11 +292,36 @@ function drawPreview(curX, curY, ctx) {
   ctx.fillStyle = activeColor;
   ctx.lineWidth = strokeSize;
   ctx.lineCap = 'round';
+  
   switch (activeTool) {
     case 'arrow':     drawArrow(startX, startY, curX, curY, ctx); break;
     case 'rectangle': drawRect(startX, startY, curX, curY, ctx); break;
     case 'circle':    drawEllipse(startX, startY, curX, curY, ctx); break;
+    case 'blur':
+    case 'crop':
+      drawSelectionBox(startX, startY, curX, curY, ctx);
+      break;
   }
+}
+
+function drawSelectionBox(x1, y1, x2, y2, ctx) {
+  const x = Math.min(x1, x2);
+  const y = Math.min(y1, y2);
+  const w = Math.abs(x2 - x1);
+  const h = Math.abs(y2 - y1);
+  
+  ctx.save();
+  ctx.strokeStyle = activeTool === 'crop' ? '#3B82F6' : '#ffffff';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]);
+  ctx.strokeRect(x, y, w, h);
+  
+  // Fill overlay for crop
+  if (activeTool === 'crop') {
+    ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
+    ctx.fillRect(x, y, w, h);
+  }
+  ctx.restore();
 }
 
 // ─── Drawing primitives ───────────────────────────────────────────────
